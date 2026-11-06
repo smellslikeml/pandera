@@ -113,6 +113,30 @@ null_schema.validate(df)
 To learn more about how the nullable check interacts with data type checks,
 see {ref}`here <how-nullable-works>`.
 
+### Nullable Columns by Default
+
+To make all schema components nullable without repeating `nullable=True`
+on each one, set `nullable=True` on the dataframe schema itself. The
+setting acts as a *default*: it only applies to components that did not
+explicitly set `nullable` themselves, so `Column(..., nullable=False)`
+still rejects null values.
+
+```{code-cell} python
+default_nullable_schema = pa.DataFrameSchema({
+    "column1": pa.Column(float),
+    "column2": pa.Column(float, nullable=False),
+}, nullable=True)
+
+# null values are accepted in column1, but not in column2
+default_nullable_schema.validate(
+    pd.DataFrame({"column1": [5, 1, np.nan], "column2": [0.1, 0.2, 0.3]})
+)
+```
+
+The dataframe-level default also applies to the schema's `index` and is
+applied at validation time only — the schema components you defined are
+never modified.
+
 (coerced)=
 
 ### Coercing Types on Columns

@@ -52,6 +52,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
         index=None,
         dtype: Any | None = None,
         coerce: bool = False,
+        nullable: bool | None = None,
         strict: StrictType = False,
         name: str | None = None,
         ordered: bool = False,
@@ -82,6 +83,11 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             validation. This overrides any coerce setting at the column
             or index level. This has no effect on columns where
             ``dtype=None``.
+        :param nullable: dataframe-level default for whether schema
+            components (columns, index) can contain null values. Applies,
+            at validation time, only to components that did not explicitly
+            set ``nullable`` themselves; ``None`` (the default) leaves each
+            component's own setting in effect.
         :param strict: ensure that all and only the columns defined in the
             schema are present in the dataframe. If set to 'filter',
             only the columns in the schema will be passed to the validated
@@ -180,6 +186,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
         self.index = index
         self.strict: Union[bool, str] = strict
         self._coerce = coerce
+        self._nullable = nullable
         self.ordered = ordered
         self._unique = [unique] if isinstance(unique, str) else unique
         self.report_duplicates = report_duplicates
@@ -249,6 +256,21 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
     def coerce(self, value: bool) -> None:
         """Set coerce attribute"""
         self._coerce = value
+
+    @property
+    def nullable(self) -> bool | None:
+        """Dataframe-level default for component nullability.
+
+        ``None`` (unset) leaves each component's own ``nullable`` setting
+        in effect; ``True``/``False`` apply, at validation time, only to
+        components that did not explicitly set ``nullable``.
+        """
+        return self._nullable
+
+    @nullable.setter
+    def nullable(self, value: bool | None) -> None:
+        """Set nullable attribute."""
+        self._nullable = value
 
     @property
     def unique(self):
@@ -361,6 +383,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             f"index={self.index.__repr__()}, "
             f"dtype={self._dtype}, "
             f"coerce={self.coerce}, "
+            f"nullable={self.nullable}, "
             f"strict={self.strict}, "
             f"name={self.name}, "
             f"ordered={self.ordered}, "
@@ -425,6 +448,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             f"{checks_str},\n"
             f"{parsers_str},\n"
             f"{indent}coerce={self.coerce},\n"
+            f"{indent}nullable={self.nullable},\n"
             f"{indent}dtype={self._dtype},\n"
             f"{indent}index={index},\n"
             f"{indent}strict={self.strict},\n"
@@ -441,7 +465,16 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
         if not isinstance(other, type(self)):
             return NotImplemented
 
-        return self.__dict__ == other.__dict__
+        def _compare_dict(obj):
+            attrs = dict(obj.__dict__)
+            # An unset ``_nullable`` (``None``) behaves exactly like an
+            # explicit ``False`` once validated, so normalize it to keep
+            # behaviorally identical schemas equal.
+            if attrs.get("_nullable") is None:
+                attrs["_nullable"] = False
+            return attrs
+
+        return _compare_dict(self) == _compare_dict(other)
 
     if PYDANTIC_V2:
 
@@ -506,6 +539,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -561,6 +595,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -627,6 +662,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -697,6 +733,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -783,6 +820,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -984,6 +1022,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -1052,6 +1091,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema Index(name=category, type=DataType(str))>,
             strict=False,
@@ -1083,6 +1123,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema MultiIndex(
                 indexes=[
@@ -1199,6 +1240,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -1233,6 +1275,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema Index(name=unique_id2, type=DataType(str))>,
             strict=False,

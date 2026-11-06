@@ -1225,6 +1225,56 @@ def test_multiindex_unique() -> None:
     assert expected == Base.to_schema()
 
 
+def test_config_nullable() -> None:
+    """``Config.nullable`` applies to fields that don't set ``nullable``."""
+
+    class Child(pa.DataFrameModel):
+        a: Series[str]
+        b: Series[str] = pa.Field(nullable=True)
+        c: Series[str] = pa.Field(nullable=False)
+        idx: Index[str]
+
+        class Config:
+            nullable = True
+
+    schema = Child.to_schema()
+    assert schema.nullable is True
+    # an unset field is reported as non-nullable until the dataframe-level
+    # default applies at validation time
+    assert schema.columns["a"].nullable is False
+
+    df = pd.DataFrame(
+        {"a": ["x", None], "b": ["y", None], "c": ["z", "w"]},
+        index=pd.Index(["i", None]),
+    )
+    validated = Child.validate(df)
+    assert validated["a"].isna().iloc[1]
+
+    # an explicit ``Field(nullable=False)`` overrides the dataframe-level
+    # default
+    with pytest.raises(SchemaError):
+        Child.validate(df.assign(c=["z", None]))
+
+    # validation must not mutate the cached schema
+    assert Child.to_schema().columns["a"].nullable is False
+
+
+def test_config_nullable_unset() -> None:
+    """Without ``Config.nullable``, field nullability is unchanged."""
+
+    class Model(pa.DataFrameModel):
+        a: Series[str]
+        b: Series[str] = pa.Field(nullable=True)
+
+    schema = Model.to_schema()
+    assert schema.nullable is None
+    assert schema.columns["a"].nullable is False
+    assert schema.columns["b"].nullable is True
+
+    with pytest.raises(SchemaError):
+        Model.validate(pd.DataFrame({"a": ["x", None], "b": ["y", None]}))
+
+
 def test_add_missing_columns_nullable_date_with_nat_default() -> None:
     """Ensure nullable Date fields with NaT defaults validate when auto-added."""
 

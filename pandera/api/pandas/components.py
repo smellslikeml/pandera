@@ -26,7 +26,7 @@ class Column(ArraySchema[pd.DataFrame]):
         dtype: PandasDtypeInputTypes | None = None,
         checks: CheckList | None = None,
         parsers: ParserList | None = None,
-        nullable: bool = False,
+        nullable: bool | None = None,
         unique: bool = False,
         report_duplicates: UniqueSettings = "all",
         coerce: bool = False,
@@ -49,6 +49,11 @@ class Column(ArraySchema[pd.DataFrame]):
         :param checks: checks to verify validity of the column
         :param parsers: parsers to verify validity of the column
         :param nullable: Whether or not column can contain null values.
+            ``None`` (the default) leaves the setting unset, so the
+            dataframe-level ``nullable`` default
+            (``DataFrameSchema(..., nullable=...)`` or
+            ``Config.nullable``) can apply at validation time; an explicit
+            ``True``/``False`` always takes precedence.
         :param unique: whether column values should be unique
         :param report_duplicates: how to report unique errors
             - `exclude_first`: report all duplicates except first occurrence
@@ -197,10 +202,16 @@ class Column(ArraySchema[pd.DataFrame]):
             return NotImplemented
 
         def _compare_dict(obj):
-            return {
+            attrs = {
                 k: v if k not in ["_checks", "_parsers"] else set(v)
                 for k, v in obj.__dict__.items()
             }
+            # An unset ``_nullable`` (``None``) behaves exactly like an
+            # explicit ``False`` once validated, so normalize it to keep
+            # behaviorally identical columns equal.
+            if attrs.get("_nullable") is None:
+                attrs["_nullable"] = False
+            return attrs
 
         return _compare_dict(self) == _compare_dict(other)
 
@@ -270,7 +281,16 @@ class Index(ArraySchema[pd.Index]):
         return False
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        def _compare_dict(obj):
+            attrs = dict(obj.__dict__)
+            # An unset ``_nullable`` (``None``) behaves exactly like an
+            # explicit ``False`` once validated, so normalize it to keep
+            # behaviorally identical indexes equal.
+            if attrs.get("_nullable") is None:
+                attrs["_nullable"] = False
+            return attrs
+
+        return _compare_dict(self) == _compare_dict(other)
 
     ###########################
     # Schema Strategy Methods #
@@ -475,7 +495,16 @@ class MultiIndex(DataFrameSchema):
         )
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        def _compare_dict(obj):
+            attrs = dict(obj.__dict__)
+            # An unset ``_nullable`` (``None``) behaves exactly like an
+            # explicit ``False`` once validated, so normalize it to keep
+            # behaviorally identical multiindexes equal.
+            if attrs.get("_nullable") is None:
+                attrs["_nullable"] = False
+            return attrs
+
+        return _compare_dict(self) == _compare_dict(other)
 
     ###########################
     # Schema Strategy Methods #

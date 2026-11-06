@@ -623,6 +623,31 @@ It is not required for the `Config` to subclass
 {class}`~pandera.api.pandas.model_config.BaseConfig` but
 it **must** be named '**Config**'.
 
+### Nullable Fields by Default
+
+Setting `nullable = True` in the `Config` class makes every field accept
+null values unless it explicitly sets `nullable` itself (e.g.
+`pa.Field(nullable=False)`), mirroring the
+`DataFrameSchema(..., nullable=True)` option.
+
+```{code-cell} python
+class NullableByDefault(pa.DataFrameModel):
+
+    column1: Series[float]
+    column2: Series[float] = pa.Field(nullable=False)
+
+    class Config:
+        nullable = True
+
+
+# null values are accepted in column1, but not in column2
+NullableByDefault.validate(
+    pd.DataFrame({"column1": [5, 1, None], "column2": [0.1, 0.2, 0.3]})
+)
+```
+
+See {ref}`here <dataframeschemas>` for the dataframe-schema equivalent.
+
 See {ref}`class-based-api-dataframe-checks` for details on using registered dataframe checks.
 
 ## MultiIndex

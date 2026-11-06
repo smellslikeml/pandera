@@ -54,7 +54,7 @@ class FieldInfo(BaseFieldInfo):
         dtype: Any,
         checks: CheckArg | None = None,
         parsers: ParserArg | None = None,
-        nullable: bool = False,
+        nullable: bool | None = False,
         required: bool = True,
         name: str | None = None,
     ) -> dict[str, Any]:
@@ -88,7 +88,7 @@ class FieldInfo(BaseFieldInfo):
         dtype: Any,
         checks: CheckArg | None = None,
         parsers: ParserArg | None = None,
-        nullable: bool = False,
+        nullable: bool | None = False,
         name: str | None = None,
     ) -> dict[str, Any]:
         """Create a schema_components.Index from a field."""
@@ -140,7 +140,7 @@ class ParsedFieldInfo(FieldInfo):
         dtype: Any,
         checks: CheckArg | None = None,
         parsers: ParserArg | None = None,
-        nullable: bool = False,
+        nullable: bool | None = False,
         required: bool = True,
         name: str | None = None,
     ) -> dict[str, Any]:
