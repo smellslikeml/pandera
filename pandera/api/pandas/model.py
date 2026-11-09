@@ -192,10 +192,20 @@ class DataFrameModel(_DataFrameModel[pd.DataFrame, DataFrameSchema]):
                     or bool(getattr(cls.__config__, "coerce", False)),
                 )
 
+                # Pass ``None`` (unset) unless the field or its annotation
+                # explicitly declares nullability, so the dataframe-level
+                # ``nullable`` default (``Config.nullable``) can apply to
+                # the column at validation time.
+                column_nullable: bool | None = None
+                if field.nullable_explicit:
+                    column_nullable = field.nullable
+                elif annotation.nullable:
+                    column_nullable = True
+
                 column_kwargs = (
                     field.column_properties(
                         dtype,
-                        nullable=annotation.nullable,
+                        nullable=column_nullable,
                         required=not annotation.is_optional_field,
                         checks=field_checks,
                         parsers=field_parsers,
@@ -226,9 +236,20 @@ class DataFrameModel(_DataFrameModel[pd.DataFrame, DataFrameSchema]):
                 ):
                     field_name = None  # type:ignore
 
+                # ``None`` (unset) unless the field or its annotation
+                # explicitly declares nullability, so the dataframe-level
+                # ``nullable`` default (``Config.nullable``) can apply to
+                # the index at validation time (see columns above).
+                index_nullable: bool | None = None
+                if field.nullable_explicit:
+                    index_nullable = field.nullable
+                elif annotation.nullable:
+                    index_nullable = True
+
                 index_kwargs = (
                     field.index_properties(
                         dtype,
+                        nullable=index_nullable,
                         checks=field_checks,
                         parsers=field_parsers,
                         name=field_name,

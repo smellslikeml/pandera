@@ -213,6 +213,7 @@ class _SchemaDescriptor:
                 kwargs = {
                     "dtype": cls.__config__.dtype,
                     "coerce": cls.__config__.coerce,
+                    "nullable": cls.__config__.nullable,
                     "parser_source": cls.__config__.parser_source,
                     "strict": cls.__config__.strict,
                     "name": cls.__config__.name,

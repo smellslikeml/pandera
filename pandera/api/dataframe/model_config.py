@@ -23,6 +23,12 @@ class BaseConfig(BaseModelConfig):
     description: str | None = None  #: arbitrary textual description
     coerce: bool = False  #: coerce types of all schema components
 
+    #: whether all schema components can contain null values by default.
+    #: ``None`` (unset) leaves each component's own ``nullable`` setting in
+    #: effect; ``True``/``False`` apply only to components that did not
+    #: explicitly set ``nullable`` (e.g. ``Field(nullable=False)``).
+    nullable: Union[bool, None] = None
+
     #: default ``source`` for ``ParsedField`` columns that do not set one
     parser_source: Union[str, list[str], None] = None
     drop_invalid_rows: bool = False  #: drop invalid rows on validation

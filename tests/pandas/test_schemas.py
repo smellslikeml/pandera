@@ -2014,6 +2014,78 @@ def test_lazy_dataframe_validation_nullable_with_checks() -> None:
         )
 
 
+def test_schema_level_nullable_default() -> None:
+    """The dataframe-level ``nullable`` default applies to components that
+    did not explicitly set ``nullable`` themselves."""
+    schema = DataFrameSchema(
+        {
+            "nullable_by_default": Column(str),
+            "explicitly_nullable": Column(str, nullable=True),
+            "explicitly_not_nullable": Column(str, nullable=False),
+        },
+        nullable=True,
+    )
+    assert schema.nullable is True
+    # an unset component reports ``False`` until the dataframe-level
+    # default applies at validation time
+    assert schema.columns["nullable_by_default"].nullable is False
+
+    df = pd.DataFrame(
+        {
+            "nullable_by_default": ["a", None],
+            "explicitly_nullable": ["b", None],
+            "explicitly_not_nullable": ["c", "d"],
+        }
+    )
+    validated = schema.validate(df)
+    assert validated["nullable_by_default"].isna().iloc[1]
+    assert validated["explicitly_nullable"].isna().iloc[1]
+
+    # an explicit ``nullable=False`` overrides the dataframe-level default
+    with pytest.raises(errors.SchemaError):
+        schema.validate(df.assign(explicitly_not_nullable=["c", None]))
+
+    # validation must not mutate the stored schema components
+    assert schema.columns["nullable_by_default"].nullable is False
+
+
+def test_schema_level_nullable_default_index() -> None:
+    """The dataframe-level ``nullable`` default also applies to the index."""
+    schema = DataFrameSchema(
+        {"column": Column(str)},
+        index=Index(str, name="index"),
+        nullable=True,
+    )
+    df = pd.DataFrame(
+        {"column": ["a", "b"]}, index=pd.Index(["x", None], name="index")
+    )
+    schema.validate(df)
+
+    # an explicit ``nullable=False`` index overrides the default
+    schema_override = DataFrameSchema(
+        {"column": Column(str)},
+        index=Index(str, name="index", nullable=False),
+        nullable=True,
+    )
+    with pytest.raises(errors.SchemaError):
+        schema_override.validate(df)
+
+
+def test_schema_level_nullable_default_unset() -> None:
+    """Without the dataframe-level ``nullable`` option, behavior is
+    unchanged: components are not nullable and nulls are rejected."""
+    schema = DataFrameSchema({"column": Column(str)})
+    assert schema.nullable is None
+    assert schema.columns["column"].nullable is False
+    with pytest.raises(errors.SchemaError):
+        schema.validate(pd.DataFrame({"column": ["a", None]}))
+
+    # ``SeriesSchema`` has no parent schema: the unset sentinel still
+    # reports ``False``
+    assert SeriesSchema(str).nullable is False
+    assert SeriesSchema(str, nullable=True).nullable is True
+
+
 @pytest.mark.parametrize(
     "schema_cls, data",
     [
